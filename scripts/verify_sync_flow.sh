@@ -121,7 +121,6 @@ VER_RUNNING_2="$(printf '%s' "${START_AGAIN}" | json_field "version")"
 curl -s -X POST "${BASE_URL}/timer/complete" -H "Authorization: Bearer ${ACCESS_B}" -H 'Content-Type: application/json' -d "{\"clientVersion\":${VER_RUNNING_2}}" >/tmp/complete_resp.json
 HISTORY_A="$(curl -s "${BASE_URL}/timer/history?since=0" -H "Authorization: Bearer ${ACCESS_A}")"
 HISTORY_B="$(curl -s "${BASE_URL}/timer/history?since=0" -H "Authorization: Bearer ${ACCESS_B}")"
-COUNT_A="$(printf '%s' "${HISTORY_A}" | python3 - <<'PY'
 COUNT_A="$(printf '%s' "${HISTORY_A}" | python3 -c 'import json,sys; print(len(json.loads(sys.stdin.read()).get("items", [])))')"
 COUNT_B="$(printf '%s' "${HISTORY_B}" | python3 -c 'import json,sys; print(len(json.loads(sys.stdin.read()).get("items", [])))')"
 assert_eq "${COUNT_A}" "${COUNT_B}" "history count should match on both devices"
@@ -143,7 +142,6 @@ assert_non_empty "${CORS_HEADER}" "CORS allow origin header should be present"
 REGISTER_2="$(curl -s -X POST "${BASE_URL}/auth/register" -H 'Content-Type: application/json' -d '{"email":"other@example.com","password":"123456"}')"
 ACCESS_2="$(printf '%s' "${REGISTER_2}" | json_field "accessToken")"
 HISTORY_2="$(curl -s "${BASE_URL}/timer/history?since=0" -H "Authorization: Bearer ${ACCESS_2}")"
-COUNT_2="$(printf '%s' "${HISTORY_2}" | python3 - <<'PY'
 COUNT_2="$(printf '%s' "${HISTORY_2}" | python3 -c 'import json,sys; print(len(json.loads(sys.stdin.read()).get("items", [])))')"
 assert_eq "${COUNT_2}" "0" "new user should not see other user's history"
 
