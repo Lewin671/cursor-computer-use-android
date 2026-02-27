@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Pomodoro Sync</string>
+    <string name="timer_notification_channel">Pomodoro Timer</string>
+    <string name="timer_notification_title">Pomodoro in progress</string>
+</resources>

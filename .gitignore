@@ -1,0 +1,19 @@
+# Android / Gradle
+.gradle/
+local.properties
+**/build/
+captures/
+*.iml
+
+# Go / backend runtime
+backend/data/
+backend/*.db
+backend/*.db-*
+
+# Temp and logs
+tmp/
+*.log
+
+# IDE
+.idea/
+.vscode/
