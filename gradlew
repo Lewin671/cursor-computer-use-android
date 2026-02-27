@@ -9,6 +9,6 @@ if [ ! -x "$JAVACMD" ]; then
   JAVACMD="java"
 fi
 
-exec "$JAVACMD" -Xmx64m -Xms64m $JAVA_OPTS $GRADLE_OPTS \
+exec "$JAVACMD" -Xmx64m -Xms64m ${JAVA_OPTS:-} ${GRADLE_OPTS:-} \
   -Dorg.gradle.appname=gradlew \
   -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
