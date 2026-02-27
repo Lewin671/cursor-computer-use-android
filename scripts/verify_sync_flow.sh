@@ -3,16 +3,19 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="${ROOT_DIR}/backend"
-PORT="${PORT:-18080}"
+PORT="${PORT:-$((18080 + RANDOM % 1000))}"
 BASE_URL="http://127.0.0.1:${PORT}/api/v1"
-DB_FILE="${ROOT_DIR}/tmp/verify_sync.db"
-LOG_FILE="${ROOT_DIR}/tmp/verify_sync_backend.log"
+DB_FILE="${ROOT_DIR}/tmp/verify_sync_${PORT}.db"
+LOG_FILE="${ROOT_DIR}/tmp/verify_sync_backend_${PORT}.log"
+RUN_ID="$(date +%s)"
+EMAIL_MAIN="demo_${RUN_ID}@example.com"
+EMAIL_SECONDARY="other_${RUN_ID}@example.com"
 
 mkdir -p "${ROOT_DIR}/tmp"
 rm -f "${DB_FILE}" "${LOG_FILE}"
 
 APP_ADDR=":${PORT}" DB_PATH="${DB_FILE}" JWT_SECRET="verify-secret" \
-  bash -c "cd \"${BACKEND_DIR}\" && go run ./cmd/server" >"${LOG_FILE}" 2>&1 &
+  bash -c "cd \"${BACKEND_DIR}\" && exec go run ./cmd/server" >"${LOG_FILE}" 2>&1 &
 SERVER_PID=$!
 trap 'kill ${SERVER_PID} >/dev/null 2>&1 || true' EXIT
 
@@ -70,7 +73,7 @@ assert_non_empty() {
 
 wait_for_server
 echo "[1/10] register user"
-REGISTER_PAYLOAD='{"email":"demo@example.com","password":"123456"}'
+REGISTER_PAYLOAD="{\"email\":\"${EMAIL_MAIN}\",\"password\":\"123456\"}"
 REGISTER_RES="$(curl -s -X POST "${BASE_URL}/auth/register" -H 'Content-Type: application/json' -d "${REGISTER_PAYLOAD}")"
 USER_ID="$(printf '%s' "${REGISTER_RES}" | json_field "userId")"
 ACCESS_A="$(printf '%s' "${REGISTER_RES}" | json_field "accessToken")"
@@ -79,7 +82,7 @@ assert_non_empty "${USER_ID}" "register should return user id"
 assert_non_empty "${ACCESS_A}" "register should return access token"
 
 echo "[2/10] login as device B"
-LOGIN_RES_B="$(curl -s -X POST "${BASE_URL}/auth/login" -H 'Content-Type: application/json' -d '{"email":"demo@example.com","password":"123456"}')"
+LOGIN_RES_B="$(curl -s -X POST "${BASE_URL}/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL_MAIN}\",\"password\":\"123456\"}")"
 ACCESS_B="$(printf '%s' "${LOGIN_RES_B}" | json_field "accessToken")"
 REFRESH_B="$(printf '%s' "${LOGIN_RES_B}" | json_field "refreshToken")"
 assert_non_empty "${ACCESS_B}" "login on device B should return access token"
@@ -139,7 +142,7 @@ assert_non_empty "${STATE_AFTER_REFRESH}" "state call with refreshed token shoul
 echo "[10/10] CORS and user isolation checks"
 CORS_HEADER="$(curl -s -D - -o /dev/null -X OPTIONS "${BASE_URL}/auth/login" -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: POST' | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Access-Control-Allow-Origin:/ {print $2}')"
 assert_non_empty "${CORS_HEADER}" "CORS allow origin header should be present"
-REGISTER_2="$(curl -s -X POST "${BASE_URL}/auth/register" -H 'Content-Type: application/json' -d '{"email":"other@example.com","password":"123456"}')"
+REGISTER_2="$(curl -s -X POST "${BASE_URL}/auth/register" -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL_SECONDARY}\",\"password\":\"123456\"}")"
 ACCESS_2="$(printf '%s' "${REGISTER_2}" | json_field "accessToken")"
 HISTORY_2="$(curl -s "${BASE_URL}/timer/history?since=0" -H "Authorization: Bearer ${ACCESS_2}")"
 COUNT_2="$(printf '%s' "${HISTORY_2}" | python3 -c 'import json,sys; print(len(json.loads(sys.stdin.read()).get("items", [])))')"
